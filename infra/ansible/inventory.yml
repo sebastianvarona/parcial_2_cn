@@ -1,0 +1,17 @@
+---
+all:
+  children:
+    haproxy:
+      hosts:
+        vm-haproxy:
+          ansible_host: 192.168.100.3
+          ansible_user: ubuntu
+    microservices:
+      hosts:
+        vm-microservices:
+          ansible_host: 192.168.100.4
+          ansible_user: ubuntu
+  vars:
+    ansible_ssh_private_key_file: ../ssh/micro_id_rsa
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+    ansible_python_interpreter: /usr/bin/python3

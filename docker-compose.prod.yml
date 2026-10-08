@@ -1,0 +1,269 @@
+version: '3.8'
+
+services:
+  users-db:
+    image: mysql:8.0
+    container_name: users-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: users_db
+    volumes:
+      - users_db_data:/var/lib/mysql
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "-proot", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  products-db:
+    image: mysql:8.0
+    container_name: products-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: products_db
+    volumes:
+      - products_db_data:/var/lib/mysql
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "-proot", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  orders-db:
+    image: mysql:8.0
+    container_name: orders-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: orders_db
+    volumes:
+      - orders_db_data:/var/lib/mysql
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "-proot", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  consul:
+    image: hashicorp/consul:1.15
+    container_name: consul
+    command: agent -dev -client=0.0.0.0 -ui
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  users-service:
+    image: sebastianvarona/users-service:latest
+    container_name: users-service
+    restart: always
+    environment:
+      USERS_DB_HOST: users-db
+      USERS_DB_USER: root
+      USERS_DB_PASSWORD: root
+      USERS_DB_NAME: users_db
+      CONSUL_ENABLED: "true"
+      CONSUL_HOST: consul
+      CONSUL_PORT: "8500"
+    ports:
+      - "3001:3001"
+    depends_on:
+      users-db:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  products-service:
+    image: sebastianvarona/products-service:latest
+    container_name: products-service
+    restart: always
+    environment:
+      PRODUCTS_DB_HOST: products-db
+      PRODUCTS_DB_USER: root
+      PRODUCTS_DB_PASSWORD: root
+      PRODUCTS_DB_NAME: products_db
+      CONSUL_ENABLED: "true"
+      CONSUL_HOST: consul
+      CONSUL_PORT: "8500"
+    ports:
+      - "3002:3002"
+    depends_on:
+      products-db:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  orders-service:
+    image: sebastianvarona/orders-service:latest
+    container_name: orders-service
+    restart: always
+    environment:
+      ORDERS_DB_HOST: orders-db
+      ORDERS_DB_USER: root
+      ORDERS_DB_PASSWORD: root
+      ORDERS_DB_NAME: orders_db
+      PRODUCTS_SERVICE_URL: http://products-service:3002
+      CONSUL_ENABLED: "true"
+      CONSUL_HOST: consul
+      CONSUL_PORT: "8500"
+    ports:
+      - "3003:3003"
+    depends_on:
+      orders-db:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  #
+  # Segunda instancia de cada microservicio (round-robin)
+  #
+  users-service-2:
+    image: sebastianvarona/users-service:latest
+    container_name: users-service-2
+    restart: always
+    environment:
+      PORT: "3011"
+      USERS_DB_HOST: users-db
+      USERS_DB_USER: root
+      USERS_DB_PASSWORD: root
+      USERS_DB_NAME: users_db
+      CONSUL_ENABLED: "true"
+      CONSUL_HOST: consul
+      CONSUL_PORT: "8500"
+    ports:
+      - "3011:3011"
+    depends_on:
+      users-db:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3011/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  products-service-2:
+    image: sebastianvarona/products-service:latest
+    container_name: products-service-2
+    restart: always
+    environment:
+      PORT: "3012"
+      PRODUCTS_DB_HOST: products-db
+      PRODUCTS_DB_USER: root
+      PRODUCTS_DB_PASSWORD: root
+      PRODUCTS_DB_NAME: products_db
+      CONSUL_ENABLED: "true"
+      CONSUL_HOST: consul
+      CONSUL_PORT: "8500"
+    ports:
+      - "3012:3012"
+    depends_on:
+      products-db:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3012/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  orders-service-2:
+    image: sebastianvarona/orders-service:latest
+    container_name: orders-service-2
+    restart: always
+    environment:
+      PORT: "3013"
+      ORDERS_DB_HOST: orders-db
+      ORDERS_DB_USER: root
+      ORDERS_DB_PASSWORD: root
+      ORDERS_DB_NAME: orders_db
+      PRODUCTS_SERVICE_URL: http://products-service:3002
+      CONSUL_ENABLED: "true"
+      CONSUL_HOST: consul
+      CONSUL_PORT: "8500"
+    ports:
+      - "3013:3013"
+    depends_on:
+      orders-db:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - app_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3013/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ----------------------------------------------------------
+  # Frontend (BFF) — interfaz web que consume los microservicios
+  # a través de HAProxy (vm-haproxy:80).
+  # Expuesto en el puerto 80 de vm-microservices.
+  # ----------------------------------------------------------
+  frontend:
+    image: sebastianvarona/frontend:latest
+    container_name: frontend
+    restart: always
+    environment:
+      USERS_SERVICE_URL: http://192.168.100.3
+      PRODUCTS_SERVICE_URL: http://192.168.100.3
+      ORDERS_SERVICE_URL: http://192.168.100.3
+    ports:
+      - "80:80"
+    networks:
+      - app_net
+
+volumes:
+  users_db_data:
+  products_db_data:
+  orders_db_data:
+
+networks:
+  app_net:
+    driver: bridge

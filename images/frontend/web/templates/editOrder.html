@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Order</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container">
+    <h2>Order Details</h2>
+    <a href="/orders" class="btn btn-primary mb-3">Back to Orders</a>
+    <div id="order-details"></div>
+</div>
+<script>
+    const urlParts = window.location.pathname.split('/');
+    const orderId = urlParts[urlParts.length - 1];
+    fetch(`/api/orders/${orderId}`, { credentials: 'include' })
+        .then(r => r.json())
+        .then(order => {
+            let html = `<p><strong>Order #${order.id}</strong></p>
+                <p>Customer: ${order.user_name} (${order.user_email})</p>
+                <p>Total: $${order.total.toFixed(2)}</p>
+                <p>Status: ${order.status}</p>
+                <p>Created: ${new Date(order.created_at).toLocaleString()}</p>
+                <h4>Items</h4>
+                <table class="table"><thead><tr><th>Product ID</th><th>Quantity</th><th>Unit Price</th><th>Subtotal</th></tr></thead><tbody>`;
+            order.items.forEach(item => {
+                html += `<tr><td>${item.product_id}</td><td>${item.quantity}</td><td>$${item.unit_price.toFixed(2)}</td><td>$${item.subtotal.toFixed(2)}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            document.getElementById('order-details').innerHTML = html;
+        })
+        .catch(error => console.error('Error:', error));
+</script>
+</body>
+</html>

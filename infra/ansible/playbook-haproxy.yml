@@ -1,0 +1,26 @@
+---
+- name: Configurar vm-haproxy
+  hosts: haproxy
+  become: true
+
+  tasks:
+    - name: Instalar HAProxy
+      ansible.builtin.apt:
+        name: haproxy
+        state: present
+        update_cache: true
+
+    - name: Habilitar e iniciar HAProxy
+      ansible.builtin.systemd:
+        name: haproxy
+        enabled: true
+        state: started
+
+    - name: Verificar estado de HAProxy
+      ansible.builtin.command: systemctl is-active haproxy
+      register: haproxy_state
+      changed_when: false
+
+    - name: Imprimir estado de HAProxy
+      ansible.builtin.debug:
+        msg: "HAProxy activo: {{ haproxy_state.stdout }}"

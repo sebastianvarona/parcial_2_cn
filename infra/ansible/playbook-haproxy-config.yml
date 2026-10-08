@@ -1,0 +1,26 @@
+---
+- name: Configurar HAProxy (Problema 2)
+  hosts: haproxy
+  become: true
+
+  tasks:
+    - name: Copiar haproxy.cfg
+      ansible.builtin.copy:
+        src: ../../haproxy/haproxy.cfg
+        dest: /etc/haproxy/haproxy.cfg
+        owner: root
+        group: root
+        mode: '0644'
+      notify: reiniciar haproxy
+
+    - name: Asegurar que HAProxy esté habilitado
+      ansible.builtin.systemd:
+        name: haproxy
+        enabled: true
+        state: started
+
+  handlers:
+    - name: reiniciar haproxy
+      ansible.builtin.systemd:
+        name: haproxy
+        state: restarted
